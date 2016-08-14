@@ -1,0 +1,1454 @@
+﻿local T, C, L, G = unpack(select(2, ...))
+local oUF = MlightUF or oUF
+
+oUF.colors.power["MANA"] = {0, 0.8, 1}
+oUF.colors.power["RAGE"] = {.9, .1, .1}
+oUF.colors.power["FUEL"] = {0, 0.55, 0.5}
+oUF.colors.power["FOCUS"] = {.9, .5, .1}
+oUF.colors.power["ENERGY"] = {.9, .9, .1}
+oUF.colors.power["AMMOSLOT"] = {0.8, 0.6, 0}
+oUF.colors.power["RUNIC_POWER"] = {.1, .9, .9}
+oUF.colors.power["POWER_TYPE_STEAM"] = {0.55, 0.57, 0.61}
+oUF.colors.power["POWER_TYPE_PYRITE"] = {0.60, 0.09, 0.17}
+
+oUF.colors.reaction[1] = {255/255, 30/255, 60/255}
+oUF.colors.reaction[2] = {255/255, 30/255, 60/255}
+oUF.colors.reaction[3] = {255/255, 30/255, 60/255}
+oUF.colors.reaction[4] = {1, 1, 0}
+oUF.colors.reaction[5] = {0.26, 1, 0.22}
+oUF.colors.reaction[6] = {0.26, 1, 0.22}
+oUF.colors.reaction[7] = {0.26, 1, 0.22}
+oUF.colors.reaction[8] = {0.26, 1, 0.22}
+
+oUF.colors.smooth = {1,0,0, 1,1,0, 1,1,0}
+
+local classicon_colors = { --monk/paladin/preist
+	{150/255, 0/255, 40/255},
+	{220/255, 20/255, 40/255},
+	{255/255, 50/255, 90/255},
+	{255/255, 80/255, 120/255},
+	{255/255, 110/255, 160/255},
+	{255/255, 140/255, 190/255},
+}
+
+local cpoints_colors = { -- combat points
+	{220/255, 40/255, 0/255},
+	{255/255, 255/255, 0/255},
+}
+
+--=============================================--
+--[[                 Functions               ]]--
+--=============================================--
+local function multicheck(check, ...)
+    for i=1, select("#", ...) do
+        if check == select(i, ...) then return true end
+    end
+    return false
+end
+--=============================================--
+--[[             MouseOn update              ]]--
+--=============================================--
+T.OnMouseOver = function(self)
+    local OnEnter = function(self)
+		UnitFrame_OnEnter(self)
+		self.isMouseOver = true
+		for _, element in ipairs(self.mouseovers) do
+			element:ForceUpdate()
+		end
+    end
+    local OnLeave = function(self)
+		UnitFrame_OnLeave(self)
+		self.isMouseOver = false
+		for _, element in ipairs(self.mouseovers) do
+			element:ForceUpdate()
+		end
+    end
+    self:SetScript("OnEnter", OnEnter)
+    self:SetScript("OnLeave", OnLeave)
+end
+--=============================================--
+--[[               Some update               ]]--
+--=============================================--
+
+T.Overridehealthbar = function(self, event, unit)
+	if(self.unit ~= unit) then return end
+	
+	local health = self.Health
+	local min, max = UnitHealth(unit), UnitHealthMax(unit)
+	local disconnected = not UnitIsConnected(unit)
+	
+	health:SetMinMaxValues(0, max)
+	
+	if disconnected then
+		health:SetValue(max)
+	elseif C["UnitframeOptions"]["style"] ~= 3 then
+		health:SetValue(max - min) 
+	else
+		health:SetValue(min) 
+	end
+
+	local r, g, b
+	local perc
+	
+	if max ~= 0 then perc = min/max else perc = 1 end
+
+	if health.value then
+		if min > 0 and min < max then
+			health.value:SetText(T.ShortValue(min).." "..T.hex(1, 1, 0)..math.floor(min/max*100+.5).."|r")
+		elseif min > 0 and health.__owner.isMouseOver and UnitIsConnected(unit) then
+			health.value:SetText(T.ShortValue(min))
+		elseif C["UnitframeOptions"]["alwayshp"] then
+			health.value:SetText(T.ShortValue(min))
+		else
+			health.value:SetText(nil)
+		end
+	end
+	
+	if min > 0 and min < max then
+		health.ind:Show()
+	else
+		health.ind:Hide()
+	end
+	
+	if UnitIsTapDenied(unit) then
+		r, g, b = .6, .6, .6
+	elseif not UnitIsConnected(unit) then
+		r, g, b = .3, .3, .3
+	elseif UnitIsGhost(unit) then
+		r, g, b = .6, .6, .6
+	elseif UnitIsDead(unit) then
+		r, g, b = 1, 0, 0
+	elseif (unit == "pet") then
+		local _, playerclass = UnitClass("player")
+		if C["UnitframeOptions"]["classcolormode"] then
+			r, g, b = unpack(oUF.colors.class[playerclass])
+		else
+			r, g, b = oUF.ColorGradient(perc, 1, unpack(oUF.colors.smooth))
+		end
+	elseif(UnitIsPlayer(unit)) then
+		local _, unitclass = UnitClass(unit)
+		if C["UnitframeOptions"]["classcolormode"] then
+			if unitclass then r, g, b = unpack(oUF.colors.class[unitclass]) else r, g, b = 1, 1, 1 end
+		else
+			r, g, b = oUF.ColorGradient(perc, 1, unpack(oUF.colors.smooth))
+		end
+	elseif unit then
+		if C["UnitframeOptions"]["classcolormode"] then
+			r, g, b = unpack(oUF.colors.reaction[UnitReaction(unit, "player") or 5])
+		else
+			r, g, b = oUF.ColorGradient(perc, 1, unpack(oUF.colors.smooth))
+		end
+	end
+	
+	if C["UnitframeOptions"]["style"] == 1 then
+		health:GetStatusBarTexture():SetGradient("VERTICAL", r, g, b, r/3, g/3, b/3)
+	else
+		health:SetStatusBarColor(r, g, b)
+	end
+end
+
+T.Updatehealthbar = function(self, unit, min, max)
+	local r, g, b
+	local perc
+	
+	if max ~= 0 then perc = min/max else perc = 1 end
+	
+	if self.value then
+		if min > 0 and min < max then
+			self.value:SetText(T.ShortValue(min).." "..T.hex(1, 1, 0)..math.floor(min/max*100+.5).."|r")
+		elseif min > 0 and self.__owner.isMouseOver and UnitIsConnected(unit) then
+			self.value:SetText(T.ShortValue(min))
+		elseif C["UnitframeOptions"]["alwayshp"] then
+			self.value:SetText(T.ShortValue(min))
+		else
+			self.value:SetText(nil)
+		end
+	end
+	
+	if min > 0 and min < max then
+		self.ind:Show()
+	else
+		self.ind:Hide()
+	end
+	
+	if UnitIsTapDenied(unit) then
+		r, g, b = .6, .6, .6
+	elseif not UnitIsConnected(unit) then
+		r, g, b = .3, .3, .3
+	elseif UnitIsGhost(unit) then
+		r, g, b = .6, .6, .6
+	elseif UnitIsDead(unit) then
+		r, g, b = 1, 0, 0
+	elseif (unit == "pet") then
+		local _, playerclass = UnitClass("player")
+		if C["UnitframeOptions"]["classcolormode"] then
+			r, g, b = unpack(oUF.colors.class[playerclass])
+		else
+			r, g, b = oUF.ColorGradient(perc, 1, unpack(oUF.colors.smooth))
+		end
+	elseif(UnitIsPlayer(unit)) then
+		local _, unitclass = UnitClass(unit)
+		if C["UnitframeOptions"]["classcolormode"] then
+			if unitclass then r, g, b = unpack(oUF.colors.class[unitclass]) else r, g, b = 1, 1, 1 end
+		else
+			r, g, b = oUF.ColorGradient(perc, 1, unpack(oUF.colors.smooth))
+		end
+	elseif unit then
+		if C["UnitframeOptions"]["classcolormode"] then
+			r, g, b = unpack(oUF.colors.reaction[UnitReaction(unit, "player") or 5])
+		else
+			r, g, b = oUF.ColorGradient(perc, 1, unpack(oUF.colors.smooth))
+		end
+	end
+	
+	if C["UnitframeOptions"]["style"] == 1 then
+		self:GetStatusBarTexture():SetGradient("VERTICAL", r, g, b, r/3, g/3, b/3)
+	else
+		self:SetStatusBarColor(r, g, b)
+	end
+	
+	if C["UnitframeOptions"]["style"] ~= 3 then
+		self:SetValue(max - self:GetValue()) 
+	end
+end
+
+T.Updatepowerbar = function(self, unit, min, max)
+	local r, g, b
+	local type = select(2, UnitPowerType(unit))
+	local powercolor = oUF.colors.power[type] or oUF.colors.power.FUEL
+	
+	if self.value then
+		if self.__owner.isMouseOver and type == 'MANA' and UnitIsConnected(unit) then
+			self.value:SetText(T.hex(unpack(powercolor))..T.ShortValue(min)..'|r')
+		elseif (min > 0 and min < max) or C["UnitframeOptions"]["alwayspp"] then
+			if type == 'MANA' then
+				self.value:SetText(T.hex(1, 1, 1)..math.floor(min/max*100+.5)..'|r'..T.hex(1, .4, 1)..'%|r')
+			else
+				self.value:SetText(T.hex(unpack(powercolor))..T.ShortValue(min)..'|r')
+			end
+		else
+			self.value:SetText(nil)
+		end
+	end
+	
+	if C["UnitframeOptions"]["classcolormode"] then
+		r, g, b = unpack(powercolor)
+	elseif UnitIsPlayer(unit) then
+		local _, unitclass = UnitClass(unit)
+		if unitclass then r, g, b = unpack(oUF.colors.class[unitclass]) else r, g, b = 1, 1, 1 end
+	else
+		r, g, b = unpack(oUF.colors.reaction[UnitReaction(unit, 'player') or 5])
+	end
+	
+	if C["UnitframeOptions"]["style"] == 1 then
+		self:GetStatusBarTexture():SetGradient("VERTICAL", r, g, b, r/3, g/3, b/3)
+	else
+		self:SetStatusBarColor(r, g, b)
+	end
+end
+
+local PostAltUpdate = function(altpp, min, cur, max)
+	altpp.value:SetText(cur)
+end
+
+local CpointsPostUpdate = function(element, cur, max, maxchanged)
+	if max <= 6 then
+		for i = 1, max do
+			element[i]:SetStatusBarColor(unpack(cpoints_colors[1]))
+		end
+	else
+		if cur <= 5 then
+			for i = 1, cur do
+				element[i]:SetStatusBarColor(unpack(cpoints_colors[1]))
+			end
+		else
+			for i = 1, cur - 5 do
+				element[i]:SetStatusBarColor(unpack(cpoints_colors[2]))
+			end
+			for i = cur - 4, 5 do
+				element[i]:SetStatusBarColor(unpack(cpoints_colors[1]))
+			end
+		end
+	end
+	
+	if maxchanged then
+		for i = 1, 6 do
+			if max == 5 or max == 8 then
+				element[i]:SetWidth((C["UnitframeOptions"]["width"]+3)/5-3)
+			else
+				element[i]:SetWidth((C["UnitframeOptions"]["width"]+3)/max-3)
+			end
+		end
+	end
+end
+
+local ClassIconsPostUpdate = function(element, cur, max, maxchange)
+	for i = 1, 6 do
+		if not max or not cur then return end
+		if max > 0 and cur == max then
+			element[i]:SetStatusBarColor(unpack(classicon_colors[max]))
+		else
+			element[i]:SetStatusBarColor(unpack(classicon_colors[i]))
+		end
+		if maxchange then
+			element[i]:SetWidth((C["UnitframeOptions"]["width"]+3)/max-3)
+		end		
+	end
+end
+
+local PostUpdateRunes = function(self, rune, rid, start, duration, runeReady)
+	if rune.value then
+		if runeReady then
+			rune.value:SetText("")
+		else
+			rune:HookScript("OnUpdate", function(self, elapsed)
+				local duration = self.duration + elapsed
+				if duration >= self.max or duration <= 0 then
+					rune.value:SetText("")
+				else
+					rune.value:SetText(T.FormatTime(self.max - duration))
+				end
+			end)
+		end
+	end
+end
+
+local CombatPostUpdate = function(self, inCombat)
+	if inCombat then
+		self.__owner.Resting:Hide()
+	elseif IsResting() then 
+		self.__owner.Resting:Show()
+	end
+end
+
+local function UpdatePrep()
+    local numOpps = GetNumArenaOpponentSpecs()
+    if numOpps > 0 then
+        for i=1, 5 do
+            if not _G["oUF_MlightArena"..i] then return end
+            local s = GetArenaOpponentSpec(i)
+            local _, spec, class, texture = nil, "UNKNOWN", "UNKNOWN", "INTERFACE\\ICONS\\INV_MISC_QUESTIONMARK"
+				
+            if s and s > 0 then
+                _, spec, _, texture, _, _, class = GetSpecializationInfoByID(s)
+            end
+
+            if (i <= numOpps) then
+                if class and spec then
+                    local color = oUF.colors.class[class]
+					--print("职业"..class.."颜色"..color.r.."  "..color.g.."  "..color.b)
+                    _G["oUF_MlightArena"..i].prepFrame.SpecClass:SetText(spec.."  -  "..LOCALIZED_CLASS_NAMES_MALE[class])
+                    _G["oUF_MlightArena"..i].prepFrame.Health:SetStatusBarColor(color.r, color.g, color.b)
+                    _G["oUF_MlightArena"..i].prepFrame.Icon:SetTexture(G.media.blank)
+                    _G["oUF_MlightArena"..i].prepFrame:Show()
+                end
+            else
+                _G["oUF_MlightArena"..i].prepFrame:Hide()
+            end
+        end
+    else
+        for i=1, 5 do
+            if not _G["oUF_MlightArena"..i] then return end
+            _G["oUF_MlightArena"..i].prepFrame:Hide()
+        end
+    end
+end
+--=============================================--
+--[[                 Castbars                ]]--
+--=============================================--
+
+local uc = {1, 0, 0}
+local tk
+if C["UnitframeOptions"]["independentcb"]  then -- 独立施法条
+	tk = {0, 0, 0}
+elseif C["UnitframeOptions"]["style"] == 1 or C["UnitframeOptions"]["style"] == 3 then -- 透明或者经典主题
+	tk = {0, 0, 0}
+else -- 深色主题
+	tk = {1, 1, 1}
+end
+
+local cbwidth, cbheight
+if C["UnitframeOptions"]["independentcb"] then
+	cbheight = C["UnitframeOptions"]["cbheight"]
+	cbwidth = C["UnitframeOptions"]["cbwidth"]
+else
+	cbheight = C["UnitframeOptions"]["height"]
+	cbwidth = C["UnitframeOptions"]["width"]
+end
+
+local ChannelSpells = {
+	--[GetSpellInfo(129197)] = 3, --精神鞭笞（乱）
+	--[GetSpellInfo(124468)] = 3, --精神鞭笞
+	[GetSpellInfo(32000)] = 5, --精神灼烧
+	[GetSpellInfo(47540)] = 2, --苦修（第一跳立即生效）
+	[GetSpellInfo(64843)] = 4, --神圣赞美诗
+	--[GetSpellInfo(64901)] = 4, --希望圣歌
+	
+	--[GetSpellInfo(10)] = 8, --暴风雪
+	[GetSpellInfo(5143)] = 5, --奥术飞弹
+	[GetSpellInfo(12051)] = 3, --唤醒（第一跳立即生效）
+
+	--[GetSpellInfo(1120)] = 6, --吸取灵魂
+	[GetSpellInfo(689)] = 6, --吸取生命
+	--[GetSpellInfo(108371)] = 6, --生命收割
+	[GetSpellInfo(4629)] = 6, --火焰之雨
+	--[GetSpellInfo(1949)] = 14, --地狱烈焰（第一跳立即生效）
+	[GetSpellInfo(755)] = 6, --生命通道
+	--[GetSpellInfo(103103)] = 4, --灾难之握
+	
+	[GetSpellInfo(740)] = 4, --宁静
+	--[GetSpellInfo(16914)] = 10, --飓风
+}
+
+local PostCastStart = function(castbar, unit)
+    if unit == "player" then
+		castbar.IBackdrop:SetBackdropBorderColor(0, 0, 0)
+	else
+		if castbar.interrupt then
+		    castbar.IBackdrop:SetBackdropBorderColor(uc[1], uc[2], uc[3])
+        else
+            castbar.IBackdrop:SetBackdropBorderColor(0, 0, 0)
+        end
+    end
+end
+
+local PostChannelStart = function(castbar, unit, spell)
+
+    if unit == "player" then
+		castbar.IBackdrop:SetBackdropBorderColor(0, 0, 0)
+	else
+		if castbar.interrupt then
+		    castbar.IBackdrop:SetBackdropBorderColor(uc[1], uc[2], uc[3])
+        else
+            castbar.IBackdrop:SetBackdropBorderColor(0, 0, 0)
+        end
+    end
+	
+	if C["UnitframeOptions"]["channelticks"] then
+		if unit == "player" and ChannelSpells[spell] then
+			if #castbar.Ticks ~= 0 then
+				for i = 1, #castbar.Ticks do
+					castbar.Ticks[i]:Hide()
+				end
+			end
+			castbar.tick = ChannelSpells[spell]
+			for i = 1, (castbar.tick-1) do
+				if not castbar.Ticks[i] then
+					castbar.Ticks[i] = castbar:CreateTexture(nil, "OVERLAY")
+					castbar.Ticks[i]:SetTexture(tk[1], tk[2], tk[3])
+					castbar.Ticks[i]:SetSize(2, cbheight)
+				else
+					castbar.Ticks[i]:Show()
+				end
+				castbar.Ticks[i]:SetPoint("RIGHT", castbar, "RIGHT", -cbwidth/castbar.tick*i, 0)
+			end
+			--print("start")
+		end
+	end
+end
+
+local PostChannelUpdate = function(castbar, unit, spell)
+	if C["UnitframeOptions"]["channelticks"] then
+		if unit == "player" and ChannelSpells[spell] then
+			if #castbar.Ticks ~= 0 then
+				for i = 1, #castbar.Ticks do
+					castbar.Ticks[i]:Hide()
+				end
+			end
+			castbar.tick = ChannelSpells[spell] + 1
+			for i = 1, (castbar.tick-1) do
+				if not castbar.Ticks[i] then
+					castbar.Ticks[i] = castbar:CreateTexture(nil, "OVERLAY")
+					castbar.Ticks[i]:SetTexture(tk[1], tk[2], tk[3])
+					castbar.Ticks[i]:SetSize(2, cbheight)
+				else
+					castbar.Ticks[i]:Show()
+				end
+				if i == 1 then
+					castbar.Ticks[i]:SetPoint("RIGHT", castbar, "RIGHT", cbwidth*castbar.delay/castbar.max, 0)
+				else
+					castbar.Ticks[i]:SetPoint("RIGHT", castbar, "RIGHT", cbwidth*(castbar.delay/castbar.max-(1+castbar.delay/castbar.max)/(castbar.tick-1)*(i-1)), 0)
+				end
+			end
+			--print("update")
+		end
+	end
+end
+
+local PostChannelStop = function(castbar, unit, spell)
+	if C["UnitframeOptions"]["channelticks"] then
+		if unit == "player" then
+			if #castbar.Ticks ~= 0 then
+				for i = 1, #castbar.Ticks do
+					castbar.Ticks[i]:Hide()
+				end
+			end
+		end
+	end
+end
+
+local CustomTimeText = function(castbar, duration)
+    if castbar.casting then
+        castbar.Time:SetFormattedText("|cff97FFFF%.1f/%.1f|r", duration, castbar.max)
+    elseif castbar.channeling then
+        castbar.Time:SetFormattedText("|cff97FFFF%.1f/%.1f|r", castbar.max - duration, castbar.max)
+    end
+end
+
+local CustomDelayText = function(castbar, duration)
+    if castbar.casting then
+        castbar.Time:SetFormattedText("|cff97FFFF%.1f/%.1f|r|cff8A8A8A(%.1f)|r", duration, castbar.max, -castbar.delay)
+    elseif castbar.channeling then
+        castbar.Time:SetFormattedText("|cff97FFFF%.1f/%.1f|r|cff8A8A8A(%.1f)|r", castbar.max - duration, castbar.max, -castbar.delay)
+    end
+end
+
+local CreateCastbars = function(self, unit)
+    local u = unit:match("[^%d]+")
+    if multicheck(u, "target", "player", "focus", "boss") then
+        local cb = CreateFrame("StatusBar", G.uiname..unit.."Castbar", self)
+		if C["UnitframeOptions"]["style"] == 1 then
+			cb:SetStatusBarTexture(G.media.blank)
+		else
+			cb:SetStatusBarTexture(G.media.ufbar)
+		end
+		cb:SetStatusBarColor(0, 0, 0, 0)
+		cb:SetAllPoints(self)
+        cb:SetFrameLevel(2)
+		
+        cb.Spark = cb:CreateTexture(nil, "OVERLAY")
+		cb.Spark:SetTexture("Interface\\UnitPowerBarAlt\\Generic1Player_Pill_Flash")
+        cb.Spark:SetBlendMode("ADD")
+        cb.Spark:SetAlpha(1)
+        cb.Spark:SetSize(8, C["UnitframeOptions"]["height"]*2)
+
+        cb.Time = T.createnumber(cb, "OVERLAY", 14, "OUTLINE", "CENTER")
+		if unit == "player" then
+			cb.Time:SetFont(G.norFont, 15, "OUTLINE")
+			cb.Time:SetPoint("TOP", cb, "BOTTOM", 0, -10)
+		else
+			cb.Time:SetPoint("BOTTOMRIGHT", cb, "TOPRIGHT", -3, -3)
+		end
+        cb.CustomTimeText = CustomTimeText
+		cb.CustomDelayText = CustomDelayText
+		
+        cb.Text =  T.createtext(cb, "OVERLAY", 14, "OUTLINE", "CENTER")
+		if u == "boss" then
+			cb.Text:SetPoint("BOTTOMLEFT", 3, -3)
+		else
+			cb.Text:SetPoint("BOTTOM", 0, -3)
+		end
+		
+        cb.Icon = cb:CreateTexture(nil, "ARTWORK")
+        cb.Icon:SetSize(C["UnitframeOptions"]["cbIconsize"], C["UnitframeOptions"]["cbIconsize"])
+        cb.Icon:SetTexCoord(.1, .9, .1, .9)
+		cb.Icon:SetPoint("BOTTOMRIGHT", cb, "BOTTOMLEFT", -7, -C["UnitframeOptions"]["height"]*(1-C["UnitframeOptions"]["hpheight"]))
+
+		cb.IBackdrop = T.createBackdrop(cb, cb.Icon)
+		
+		if multicheck(u, "target", "player", "focus") and C["UnitframeOptions"]["independentcb"] then
+			cb:ClearAllPoints()
+			
+			if unit == "player" then
+				cb.SafeZone = cb:CreateTexture(nil, "OVERLAY")
+				cb.SafeZone:SetTexture(G.media.blank)
+				cb.SafeZone:SetVertexColor( 1, 1, 1, .5)
+				
+				cb:SetSize(C["UnitframeOptions"]["cbwidth"], C["UnitframeOptions"]["cbheight"])
+				cb.movingname = L["玩家施法条"]
+				cb.point = {
+						healer = {a1 = "TOP", parent = "UIParent", a2 = "CENTER", x = 0, y = -150},
+						dpser = {a1 = "TOP", parent = "UIParent", a2 = "CENTER", x = 0, y = -150},
+					}
+				cb.Spark:SetSize(8, C["UnitframeOptions"]["cbheight"]*2)
+			elseif unit == "target" then
+				cb:SetSize(C["UnitframeOptions"]["target_cbwidth"], C["UnitframeOptions"]["target_cbheight"])
+				cb.movingname = L["目标施法条"]
+				cb.point = {
+						healer = {a1 = "TOPLEFT", parent = "oUF_MlightTarget", a2 = "BOTTOMLEFT", x = 0, y = -10},
+						dpser = {a1 = "TOPLEFT", parent = "oUF_MlightTarget", a2 = "BOTTOMLEFT", x = 0, y = -10},
+					}
+				cb.Spark:SetSize(8, C["UnitframeOptions"]["target_cbheight"]*2)
+			elseif unit == "focus" then
+				cb:SetSize(C["UnitframeOptions"]["focus_cbwidth"], C["UnitframeOptions"]["focus_cbheight"])
+				cb.movingname = L["焦点施法条"]
+				cb.point = {
+						healer = {a1 = "TOPLEFT", parent = "oUF_MlightFocus", a2 = "BOTTOMLEFT", x = 0, y = -10},
+						dpser = {a1 = "TOPLEFT", parent = "oUF_MlightFocus", a2 = "BOTTOMLEFT", x = 0, y = -10},
+					}
+				cb.Spark:SetSize(8, C["UnitframeOptions"]["focus_cbheight"]*2)
+			end
+			
+			T.CreateDragFrame(cb)
+			
+			cb:SetStatusBarColor( .35, .65, 1, 1)
+			cb.bd = T.createBackdrop(cb, cb, 1)
+			cb.Icon:SetPoint("BOTTOMRIGHT", cb, "BOTTOMLEFT", -7, 0)
+			
+			cb.Time:ClearAllPoints()
+			if C["UnitframeOptions"]["timepos"] == "TOPLEFT" then
+				cb.Time:SetPoint("BOTTOMLEFT", cb, "TOPLEFT", 0, 3)
+				cb.Time:SetJustifyH("LEFT")
+			elseif C["UnitframeOptions"]["timepos"] == "LEFT" then
+				cb.Time:SetPoint("LEFT", cb, "LEFT", 0, 0)
+				cb.Time:SetJustifyH("LEFT")
+			elseif C["UnitframeOptions"]["timepos"] == "TOPRIGHT" then
+				cb.Time:SetPoint("BOTTOMRIGHT", cb, "TOPRIGHT", 0, 3)
+				cb.Time:SetJustifyH("RIGHT")
+			else -- RIGHT
+				cb.Time:SetPoint("RIGHT", cb, "RIGHT", 0, 0)
+				cb.Time:SetJustifyH("RIGHT")
+			end
+			
+			cb.Text:ClearAllPoints()
+			if C["UnitframeOptions"]["namepos"] == "TOPLEFT" then
+				cb.Text:SetPoint("BOTTOMLEFT", cb, "TOPLEFT", 0, 3)
+				cb.Text:SetJustifyH("LEFT")
+			elseif C["UnitframeOptions"]["namepos"] == "LEFT" then
+				cb.Text:SetPoint("LEFT", cb, "LEFT", 0, 0)
+				cb.Text:SetJustifyH("LEFT")
+			elseif C["UnitframeOptions"]["namepos"] == "TOPRIGHT" then
+				cb.Text:SetPoint("BOTTOMRIGHT", cb, "TOPRIGHT", 0, 3)
+				cb.Text:SetJustifyH("RIGHT")
+			else -- RIGHT
+				cb.Text:SetPoint("RIGHT", cb, "RIGHT", 0, 0)
+				cb.Text:SetJustifyH("RIGHT")
+			end
+		end
+		
+		cb.Ticks = {}
+        cb.PostCastStart = PostCastStart
+        cb.PostChannelStart = PostChannelStart
+		cb.PostChannelUpdate = PostChannelUpdate
+		cb.PostChannelStop = PostChannelStop
+		
+        self.Castbar = cb
+    end
+end
+
+--=============================================--
+--[[               Swing Timer               ]]--
+--=============================================--
+local CreateSwingTimer = function(self, unit) -- only for player
+	local bar = CreateFrame("Frame", G.uiname..unit.."SwingTimer", self)
+	bar:SetSize(C["UnitframeOptions"]["swwidth"], C["UnitframeOptions"]["swheight"])
+	bar.movingname = L["玩家平砍计时条"]
+	bar.point = {
+		healer = {a1 = "TOP", parent = "UIParent", a2 = "CENTER", x = 0, y = -160},
+		dpser = {a1 = "TOP", parent = "UIParent", a2 = "CENTER", x = 0, y = -160},
+	}
+	T.CreateDragFrame(bar)
+
+	-- 双手
+	bar.Twohand = CreateFrame("StatusBar", nil, bar)
+	bar.Twohand:SetAllPoints(bar)
+	if C["UnitframeOptions"]["style"] == 1 then
+		bar.Twohand:SetStatusBarTexture(G.media.blank)
+	else
+		bar.Twohand:SetStatusBarTexture(G.media.ufbar)
+	end
+	bar.Twohand:SetStatusBarColor(1, 1, .2)
+	bar.Twohand.bd = T.createBackdrop(bar.Twohand, bar.Twohand, 1)
+	bar.Twohand:SetFrameLevel(20)
+	
+	bar.Twohand.Spark = bar.Twohand:CreateTexture(nil, "OVERLAY")
+    bar.Twohand.Spark:SetSize(8, C["UnitframeOptions"]["swheight"]*2)
+	bar.Twohand.Spark:SetPoint("CENTER", bar.Twohand:GetStatusBarTexture(), "RIGHT")
+	bar.Twohand.Spark:SetTexture("Interface\\UnitPowerBarAlt\\Generic1Player_Pill_Flash")
+	bar.Twohand.Spark:SetVertexColor(1, 1, .2)
+	bar.Twohand.Spark:SetBlendMode("ADD")
+		
+	bar.Twohand:Hide()
+	
+	-- 主手
+	bar.Mainhand = CreateFrame("StatusBar", nil, bar)
+	bar.Mainhand:SetAllPoints(bar)
+	if C["UnitframeOptions"]["style"] == 1 then
+		bar.Mainhand:SetStatusBarTexture(G.media.blank)
+	else
+		bar.Mainhand:SetStatusBarTexture(G.media.ufbar)
+	end
+	bar.Mainhand:SetStatusBarColor(1, 1, .2)
+	bar.Mainhand.bd = T.createBackdrop(bar.Mainhand, bar.Mainhand, 1)
+	bar.Mainhand:SetFrameLevel(20)
+	
+	bar.Mainhand.Spark = bar.Mainhand:CreateTexture(nil, "OVERLAY")
+	bar.Mainhand.Spark:SetSize(8, C["UnitframeOptions"]["swheight"]*2)
+	
+	bar.Mainhand.Spark:SetPoint("CENTER", bar.Mainhand:GetStatusBarTexture(), "RIGHT")
+	bar.Mainhand.Spark:SetTexture("Interface\\UnitPowerBarAlt\\Generic1Player_Pill_Flash")
+	bar.Mainhand.Spark:SetVertexColor(1, 1, .2)
+	bar.Mainhand.Spark:SetBlendMode("ADD")		
+		
+	bar.Mainhand:Hide()
+	
+	-- 副手
+	bar.Offhand = CreateFrame("StatusBar", nil, bar)
+	bar.Offhand:SetPoint("TOPLEFT", bar, "BOTTOMLEFT", 0, -3)
+	bar.Offhand:SetPoint("TOPRIGHT", bar, "BOTTOMRIGHT", 0, -3)
+	bar.Offhand:SetHeight(C["UnitframeOptions"]["swheight"]/2)
+	if C["UnitframeOptions"]["style"] == 1 then
+		bar.Offhand:SetStatusBarTexture(G.media.blank)
+	else
+		bar.Offhand:SetStatusBarTexture(G.media.ufbar)
+	end
+	bar.Offhand:SetStatusBarColor(.2, 1, 1)
+	bar.Offhand.bd = T.createBackdrop(bar.Offhand, bar.Offhand, 1)
+	bar.Offhand:SetFrameLevel(20)
+	
+	bar.Offhand.Spark = bar.Offhand:CreateTexture(nil, "OVERLAY")
+    bar.Offhand.Spark:SetSize(8, C["UnitframeOptions"]["swheight"])
+	bar.Offhand.Spark:SetPoint("CENTER", bar.Offhand:GetStatusBarTexture(), "RIGHT")
+	bar.Offhand.Spark:SetTexture("Interface\\UnitPowerBarAlt\\Generic1Player_Pill_Flash")
+	bar.Offhand.Spark:SetVertexColor(.2, 1, 1)
+	bar.Offhand.Spark:SetBlendMode("ADD")		
+		
+	bar.Offhand:Hide()
+	
+	if not C["UnitframeOptions"]["swoffhand"] then
+		bar.Offhand.Show = bar.Offhand.Hide
+	end
+	
+	if C["UnitframeOptions"]["swtimer"] then
+		bar.Text = T.createtext(bar.Twohand, "OVERLAY", C["UnitframeOptions"]["swtimersize"], "OUTLINE", "CENTER")
+		bar.Text:SetPoint("CENTER")
+		
+		bar.TextMH = T.createtext(bar.Mainhand, "OVERLAY", C["UnitframeOptions"]["swtimersize"], "OUTLINE", "CENTER")
+		bar.TextMH:SetPoint("CENTER")
+		
+		bar.TextOH = T.createtext(bar.Offhand, "OVERLAY", C["UnitframeOptions"]["swtimersize"]/1.5, "OUTLINE", "CENTER")
+		bar.TextOH:SetPoint("CENTER")
+	end
+	
+	bar.hideOoc = true
+	 
+	self.Swing = bar
+end
+
+--=============================================--
+--[[                   Auras                 ]]--
+--=============================================--
+local iconsize = (C["UnitframeOptions"]["width"]+3)/C["UnitframeOptions"]["auraperrow"]-3
+local PostCreateIcon = function(auras, icon)
+    icon.icon:SetTexCoord(.07, .93, .07, .93)
+
+    icon.count:ClearAllPoints()
+    icon.count:SetPoint("BOTTOMRIGHT", 0, -3)
+    icon.count:SetFontObject(nil)
+    icon.count:SetFont(G.numFont, iconsize*.65, "OUTLINE")
+    icon.count:SetTextColor(.9, .9, .1)
+
+	icon.overlay:SetTexture(G.media.blank)
+	icon.overlay:SetDrawLayer("BACKGROUND")
+    icon.overlay:SetPoint("TOPLEFT", icon, "TOPLEFT", -1, 1)
+    icon.overlay:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 1, -1)
+
+	icon.bd = T.createBackdrop(icon, icon, 0)
+
+	icon.remaining =  T.createnumber(icon, "OVERLAY", iconsize*.55, "OUTLINE", "CENTER")
+    icon.remaining:SetPoint("TOPLEFT", 0, 5)
+
+    if C["UnitframeOptions"]["auraborders"] then
+        auras.showDebuffType = true
+	else
+		auras.showDebuffType = false
+	end
+end
+
+local CreateAuraTimer = function(self, elapsed)
+    self.elapsed = (self.elapsed or 0) + elapsed
+
+    if self.elapsed < .2 then return end
+    self.elapsed = 0
+
+    local timeLeft = self.expires - GetTime()
+    if timeLeft <= 0 then
+        self.remaining:SetText(nil)
+    else
+        self.remaining:SetText(T.FormatTime(timeLeft))
+    end
+end
+
+local whitelist = {
+	["123059"] = true,  -- 动摇意志
+}
+
+local PostUpdateIcon = function(icons, unit, icon, index, offset)
+	local name, _, _, _, _, duration, expirationTime, _, _, _, SpellID = UnitAura(unit, index, icon.filter)
+
+	if icon.isPlayer or UnitIsFriend("player", unit) or not icon.isDebuff or C["UnitframeOptions"]["AuraFilterwhitelist"][tostring(SpellID)] or whitelist[tostring(SpellID)] then
+		icon.icon:SetDesaturated(false)
+		if duration and duration > 0 then
+			icon.remaining:Show()
+		else
+			icon.remaining:Hide()
+		end
+		icon.count:Show()
+	else
+		icon.icon:SetDesaturated(true) -- grey other's debuff casted on enemy.
+		icon.overlay:Hide()
+		icon.remaining:Hide()
+		icon.count:Hide()
+	end
+		
+	if duration then
+		icon.bd:Show() -- if the aura is not a gap icon show it"s bd
+	end
+		
+	icon.expires = expirationTime
+	icon:SetScript("OnUpdate", CreateAuraTimer)
+end
+
+local PostUpdateGapIcon = function(auras, unit, icon, visibleBuffs)
+	icon.bd:Hide()
+	icon.remaining:Hide()
+end
+
+local CustomFilter = function(icons, unit, icon, ...)
+	local SpellID = select(11, ...)
+	if icon.isPlayer then -- show all my auras
+		return true
+	elseif UnitIsFriend("player", unit) and (not C["UnitframeOptions"]["AuraFilterignoreBuff"] or icon.isDebuff) then
+		return true
+	elseif not UnitIsFriend("player", unit) and (not C["UnitframeOptions"]["AuraFilterignoreDebuff"] or not icon.isDebuff) then
+		return true
+	elseif C["UnitframeOptions"]["AuraFilterwhitelist"][tostring(SpellID)] then
+		return true
+	end
+end
+
+local BossAuraFilter = function(icons, unit, icon, ...)
+	local SpellID = select(11, ...)
+	if icon.isPlayer or not icon.isDebuff then -- show buff and my auras
+		return true
+	elseif whitelist[tostring(SpellID)] then
+		return true
+	end
+end
+
+blacklist ={
+	["36032"] = true, -- Arcane Charge
+	["134122"] = true, --Blue Beam
+	["134123"] = true, --Red Beam
+	["134124"] = true, --Yellow Beam
+	["124275"] = true, --轻度醉拳
+	["124274"] = true, --中度醉拳
+	["124273"] = true, --重度醉拳
+	--["80354"] = true, --时空错位
+	--["124273"] = true, --心满意足
+}
+
+local PlayerDebuffFilter = function(icons, unit, icon, ...)
+	local SpellID = select(11, ...)
+	if blacklist[tostring(SpellID)] then
+		return false
+	else
+		return true
+	end
+end
+
+local CreateAuras = function(self, unit)
+	local u = unit:match("[^%d]+")
+    if multicheck(u, "target", "focus", "boss", "arena", "player", "pet") then
+		local Auras = CreateFrame("Frame", nil, self)
+		Auras:SetHeight(C["UnitframeOptions"]["height"]*2)
+		Auras:SetWidth(C["UnitframeOptions"]["width"]-2)
+		Auras.gap = true
+		Auras.disableCooldown = true
+		if G.myClass == "MAGE" then
+			Auras.showStealableBuffs = true 
+		end
+		Auras.size = iconsize
+		Auras.spacing = 3
+		Auras.PostCreateIcon = PostCreateIcon
+		Auras.PostUpdateIcon = PostUpdateIcon
+		Auras.PostUpdateGapIcon = PostUpdateGapIcon
+		
+		if unit == "target" or unit == "focus" then
+			Auras:SetPoint("BOTTOMLEFT", self, "TOPLEFT", 1, 14)
+			Auras.initialAnchor = "BOTTOMLEFT"
+			Auras["growth-x"] = "RIGHT"
+			Auras["growth-y"] = "UP"
+			Auras.numDebuffs = C["UnitframeOptions"]["auraperrow"]
+			Auras.numBuffs = C["UnitframeOptions"]["auraperrow"]
+			if unit == "target" and (C["UnitframeOptions"]["AuraFilterignoreBuff"] or C["UnitframeOptions"]["AuraFilterignoreDebuff"]) then
+				Auras.CustomFilter = CustomFilter
+			end
+		elseif C["UnitframeOptions"]["playerdebuffenable"] and unit == "player" then
+			Auras:SetPoint("BOTTOMLEFT", self, "TOPLEFT", 1, C["UnitframeOptions"]["height"]*-(C["UnitframeOptions"]["hpheight"]-1)+8)
+			Auras.initialAnchor = "BOTTOMLEFT"
+			Auras["growth-x"] = "RIGHT"
+			Auras["growth-y"] = "UP"
+			Auras.numDebuffs = C["UnitframeOptions"]["playerdebuffnum"]
+			Auras.numBuffs = 0
+			Auras.size = (C["UnitframeOptions"]["width"]+3)/C["UnitframeOptions"]["playerdebuffnum"]-3
+			Auras.CustomFilter = PlayerDebuffFilter
+		elseif unit == "pet" then
+			Auras:SetWidth(C["UnitframeOptions"]["widthpet"]-2)
+			Auras:SetPoint("BOTTOMLEFT", self, "TOPLEFT", 1, 5)
+			Auras.initialAnchor = "BOTTOMLEFT"
+			Auras["growth-x"] = "RIGHT"
+			Auras["growth-y"] = "UP"
+			Auras.numDebuffs = 5
+			Auras.numBuffs = 0
+		elseif u == "boss" then -- boss 1-5
+			Auras:SetWidth(C["UnitframeOptions"]["widthboss"]-2)
+			Auras:SetPoint("BOTTOMLEFT", self, "TOPLEFT", 1, 14)
+			Auras.initialAnchor = "BOTTOMLEFT"
+			Auras["growth-x"] = "RIGHT"
+			Auras["growth-y"] = "UP"	
+			Auras.numDebuffs = 6
+			Auras.numBuffs = 3
+			Auras.CustomFilter = BossAuraFilter
+		elseif u == "arena" then
+			Auras:SetWidth(C["UnitframeOptions"]["widthboss"]-2)
+			Auras:SetPoint("BOTTOMLEFT", self, "TOPLEFT", 1, 14)
+			Auras.initialAnchor = "BOTTOMLEFT"
+			Auras["growth-x"] = "RIGHT"
+			Auras["growth-y"] = "UP"
+			Auras.numDebuffs = ceil(C["UnitframeOptions"]["widthboss"]/((C["UnitframeOptions"]["width"]+3)/C["UnitframeOptions"]["auraperrow"]-3))-1
+			Auras.numBuffs = ceil(C["UnitframeOptions"]["widthboss"]/((C["UnitframeOptions"]["width"]+3)/C["UnitframeOptions"]["auraperrow"]-3))-1
+		end
+		self.Auras = Auras
+	end
+end
+
+--=============================================--
+--[[              Unit Frames                ]]--
+--=============================================--
+
+local func = function(self, unit)
+	local u = unit:match("[^%d]+")
+	
+	T.OnMouseOver(self)
+    self:RegisterForClicks"AnyUp"
+	self.mouseovers = {}
+	
+	-- highlight --
+	self.hl = self:CreateTexture(nil, "HIGHLIGHT")
+    self.hl:SetAllPoints()
+    self.hl:SetTexture(G.media.barhightlight)
+    self.hl:SetVertexColor( 1, 1, 1, .3)
+    self.hl:SetBlendMode("ADD")
+
+	-- backdrop --
+	self.bg = CreateFrame("Frame", nil, self)
+	self.bg:SetFrameLevel(0)
+	self.bg:SetAllPoints(self)
+	self.bg.tex = self.bg:CreateTexture(nil, "BACKGROUND")
+    self.bg.tex:SetAllPoints()
+	if C["UnitframeOptions"]["style"] == 1 then
+		self.bg.tex:SetTexture(G.media.blank)
+		self.bg.tex:SetVertexColor(0, 0, 0, 0)	
+	else
+		self.bg.tex:SetTexture(G.media.ufbar)
+		self.bg.tex:SetVertexColor(0, 0, 0)
+	end
+	
+    -- height, width and scale --
+	if multicheck(u, "targettarget", "focustarget", "pet") then
+        self:SetSize(C["UnitframeOptions"]["widthpet"], C["UnitframeOptions"]["height"])
+	elseif u == "boss" or u == "arena" then
+		self:SetSize(C["UnitframeOptions"]["widthboss"], C["UnitframeOptions"]["height"])
+	else
+	    self:SetSize(C["UnitframeOptions"]["width"], C["UnitframeOptions"]["height"])
+    end
+    self:SetScale(C["UnitframeOptions"]["scale"])
+	
+	-- shadow border for health bar --
+    self.backdrop = T.createBackdrop(self, self, 0) -- this also use for dispel border
+	
+	-- health bar --
+    local hp = T.createStatusbar(self, "ARTWORK", nil, nil, 1, 1, 1, 1)
+	hp:SetFrameLevel(2)
+	hp:SetAllPoints(self)
+    hp.frequentUpdates = true
+	
+	if C["UnitframeOptions"]["style"] == 1 then
+		hp.bg:SetGradientAlpha("VERTICAL", .5, .5, .5, .5, 0, 0, 0,0)
+	else
+		hp.bg:SetGradientAlpha("VERTICAL", .2,.2,.2,.15,.25,.25,.25,.6)
+	end
+	
+	-- health text --
+	if not (unit == "targettarget" or unit == "focustarget" or unit == "pet") then
+		hp.value =  T.createnumber(hp, "OVERLAY", C["UnitframeOptions"]["valuefontsize"], "OUTLINE", "RIGHT")
+		hp.value:SetPoint("BOTTOMRIGHT", self, -4, -2)
+	end
+	
+	-- little black line to make the health bar more clear
+	hp.ind = hp:CreateTexture(nil, "OVERLAY", 1)
+    hp.ind:SetTexture("Interface\\Buttons\\WHITE8x8")
+	hp.ind:SetVertexColor(0, 0, 0)
+	hp.ind:SetSize(1, self:GetHeight())
+	if C["UnitframeOptions"]["style"] ~= 3 then
+		hp.ind:SetPoint("RIGHT", hp:GetStatusBarTexture(), "LEFT", 0, 0)
+	else
+		hp.ind:SetPoint("LEFT", hp:GetStatusBarTexture(), "RIGHT", 0, 0)
+	end
+	
+	-- reverse fill health --
+	if C["UnitframeOptions"]["style"] ~= 3 then
+		hp:SetReverseFill(true)
+	end
+	
+    self.Health = hp
+	self.Health.PostUpdate = T.Updatehealthbar
+	tinsert(self.mouseovers, self.Health)
+	
+	-- portrait 只有样式1和样式2才有肖像
+	if C["UnitframeOptions"]["style"] ~= 3 and C["UnitframeOptions"]["portrait"] and multicheck(u, "player", "target", "focus", "boss", "arena") then
+		local Portrait = CreateFrame('PlayerModel', nil, self)
+		Portrait:SetFrameLevel(1) -- blow hp
+		Portrait:SetPoint("TOPLEFT", 1, 0)
+		Portrait:SetPoint("BOTTOMRIGHT", -1, 1)
+		Portrait:SetAlpha(C["UnitframeOptions"]["portraitalpha"])
+		self.Portrait = Portrait
+	end
+	
+	-- power bar --
+    if not (unit == "targettarget" or unit == "focustarget") then
+		local pp = T.createStatusbar(self, "ARTWORK", C["UnitframeOptions"]["height"]*-(C["UnitframeOptions"]["hpheight"]-1), nil, 1, 1, 1, 1)
+		pp:SetFrameLevel(2)
+		pp:SetPoint"LEFT"
+		pp:SetPoint"RIGHT"
+		pp:SetPoint("TOP", self, "BOTTOM", 0, -1)
+		pp.frequentUpdates = true
+		
+		pp.bg:SetGradientAlpha("VERTICAL", .2,.2,.2,.15,.25,.25,.25,.6)
+
+		-- backdrop for power bar --	
+		pp.bd = T.createBackdrop(pp, pp, 1)
+		
+		-- power text --
+		if not multicheck(u, "pet", "boss", "arena") then
+			pp.value =  T.createnumber(pp, "OVERLAY", C["UnitframeOptions"]["valuefontsize"], "OUTLINE", "LEFT")
+			pp.value:SetPoint("BOTTOMLEFT", self, 4, -2)
+		end
+
+		self.Power = pp
+		self.Power.PostUpdate = T.Updatepowerbar
+		tinsert(self.mouseovers, self.Power)
+    end
+
+	-- altpower bar --
+    if multicheck(u, "player", "boss", "pet") then
+		local altpp = T.createStatusbar(self, "ARTWORK", 5, nil, 1, 1, 0, 1)
+		if unit == "pet" then
+			altpp:SetPoint("TOPLEFT", self.Power, "BOTTOMLEFT", 0, -5)
+			altpp:SetPoint("TOPRIGHT", self.Power, "BOTTOMRIGHT", 0, -5)
+		else
+			altpp:SetPoint("TOPLEFT", _G["oUF_MlightPlayer"].Power, "BOTTOMLEFT", 0, -5)
+			altpp:SetPoint("TOPRIGHT", _G["oUF_MlightPlayer"].Power, "BOTTOMRIGHT", 0, -5)
+		end
+		
+		altpp.bg:SetGradientAlpha("VERTICAL", .2,.2,.2,.15,.25,.25,.25,.6)
+		altpp.bd = T.createBackdrop(altpp, altpp, 1)
+
+		altpp.value =  T.createtext(altpp, "OVERLAY", 11, "OUTLINE", "CENTER")
+		altpp.value:SetPoint"CENTER"
+
+		self.AltPowerBar = altpp
+		self.AltPowerBar.PostUpdate = PostAltUpdate
+    end
+
+	-- little thing around unit frames --
+    local leader = hp:CreateTexture(nil, "OVERLAY")
+    leader:SetSize(12, 12)
+    leader:SetPoint("BOTTOMLEFT", hp, "BOTTOMLEFT", 5, -5)
+    self.Leader = leader
+
+	local assistant = hp:CreateTexture(nil, "OVERLAY")
+    assistant:SetSize(12, 12)
+    assistant:SetPoint("BOTTOMLEFT", hp, "BOTTOMLEFT", 5, -5)
+	self.Assistant = assistant
+	
+    local masterlooter = hp:CreateTexture(nil, "OVERLAY")
+    masterlooter:SetSize(12, 12)
+    masterlooter:SetPoint("LEFT", leader, "RIGHT")
+    self.MasterLooter = masterlooter
+	
+    local ricon = hp:CreateTexture(nil, "OVERLAY")
+    ricon:SetPoint("CENTER", hp, "CENTER", 0, 0)
+    ricon:SetSize(30, 30)
+    self.RaidIcon = ricon
+	
+	-- name --
+    local name =  T.createtext(self.Health, "OVERLAY", 13, "OUTLINE", "LEFT")
+	name:SetPoint("TOPLEFT", self.Health, "TOPLEFT", 3, 9)
+    if unit == "player" or unit == "pet" then
+        name:Hide()
+	elseif multicheck(u, "targettarget", "focustarget", "boss", "arena") then
+		if C["UnitframeOptions"]["nameclasscolormode"] then
+			self:Tag(name, "[Mlight:color][Mlight:shortname]")
+		else
+			self:Tag(name, "[Mlight:shortname]")
+		end
+    elseif C["UnitframeOptions"]["nameclasscolormode"] then
+		self:Tag(name, "[difficulty][level][shortclassification]|r [Mlight:color][name] [status]")
+    else
+		self:Tag(name, "[difficulty][level][shortclassification]|r [name] [status]")
+    end
+    self.Name = name
+	
+    if C["UnitframeOptions"]["castbars"] then
+        CreateCastbars(self, unit)
+    end
+	
+	if C["UnitframeOptions"]["swing"] then
+		CreateSwingTimer(self, unit)
+	end
+	
+	if C["UnitframeOptions"]["auras"] then
+		CreateAuras(self, unit)
+	end
+	
+	self.FadeMinAlpha = C["UnitframeOptions"]["fadingalpha"]
+	self.FadeInSmooth = 0.4
+	self.FadeOutSmooth = 1.5
+	self.FadeCasting = true
+	self.FadeCombat = true
+	self.FadeTarget = true
+	self.FadeHealth = true
+	self.FadePower = true
+	self.FadeHover = true
+end
+
+local UnitSpecific = {
+
+    --========================--
+    --  Player
+    --========================--
+    player = function(self, ...)
+        func(self, ...)
+		
+        -- Runes, Shards, HolyPower and so on --
+        if multicheck(G.myClass, "DEATHKNIGHT", "WARLOCK", "PALADIN", "MONK", "MAGE", "ROGUE", "DRUID") then 
+            local count = 6
+
+            local bars = CreateFrame("Frame", G.uiname.."SpecOrbs", self)
+			bars:SetPoint("BOTTOMLEFT", self, "TOPLEFT", 0, 3)
+            bars:SetSize(C["UnitframeOptions"]["width"], 10)
+
+            for i = 1, count do
+				bars[i] = T.createStatusbar(bars, "ARTWORK", C["UnitframeOptions"]["height"]*-(C["UnitframeOptions"]["hpheight"]-1), (C["UnitframeOptions"]["width"]+2)/count-3, 1, 1, 1, 1, G.uiname.."SpecOrbs"..i)
+
+                if i == 1 then
+                    bars[i]:SetPoint("BOTTOMLEFT", bars, "BOTTOMLEFT")
+                else
+                    bars[i]:SetPoint("LEFT", bars[i-1], "RIGHT", 3, 0)
+                end
+
+				bars[i].bg:Hide()
+                bars[i].bd = T.createBackdrop(bars[i], bars[i], 1)
+            end
+
+            if G.myClass == "DEATHKNIGHT" then
+				if C["UnitframeOptions"]["runecooldown"] then
+					for i = 1, 6 do
+						bars[i].value = T.createtext(bars[i], "OVERLAY", C["UnitframeOptions"]["valuefs"], "OUTLINE", "CENTER")
+						bars[i].value:SetPoint("CENTER")
+						bars[i]:SetStatusBarColor(.7, .7, 1) 
+					end
+				end
+                self.Runes = bars	
+				self.Runes.PostUpdateRune = PostUpdateRunes
+            elseif G.myClass == "PALADIN" or G.myClass == "MONK" or G.myClass == "WARLOCK" or G.myClass == "MAGE" then 
+                self.ClassIcons = bars
+				self.ClassIcons.UpdateTexture = function() end
+				self.ClassIcons.PostUpdate = ClassIconsPostUpdate
+			elseif G.myClass == "ROGUE" or G.myClass == "DRUID" then
+			    self.CPoints = bars
+				self.CPoints.PostUpdate = CpointsPostUpdate
+            end
+        end
+		
+		-- Shaman mana
+		if G.myClass == "SHAMAN" then
+			local shamanmana = T.createStatusbar(self, "ARTWORK", C["UnitframeOptions"]["height"]*-(C["UnitframeOptions"]["hpheight"]-1), nil, 1, 1, 1, 1)
+			shamanmana:SetFrameLevel(2)
+			shamanmana:SetPoint"LEFT"
+			shamanmana:SetPoint"RIGHT"
+			shamanmana:SetPoint("BOTTOM", self, "TOP", 0, 1)
+			
+			shamanmana:SetMinMaxValues(0, 2)
+			shamanmana:SetValue(1)
+			
+			shamanmana.bg:SetGradientAlpha("VERTICAL", .2,.2,.2,.15,.25,.25,.25,.6)
+			shamanmana.bg.multiplier =.20
+			
+			-- backdrop --	
+			shamanmana.bd = T.createBackdrop(shamanmana, shamanmana, 1)
+			
+			self.ShamanMana = shamanmana
+		end
+		
+		-- Zzz
+		local Resting = self.Power:CreateTexture(nil, 'OVERLAY')
+		Resting:SetSize(18, 18)
+		Resting:SetTexture(G.media.reseting)
+		Resting:SetDesaturated(true)
+		Resting:SetVertexColor( 0, 1, 0)
+		Resting:SetPoint("RIGHT", self.Power, "RIGHT", -5, 0)
+		self.Resting = Resting
+		
+		-- Combat
+		local Combat = self.Power:CreateTexture(nil, "OVERLAY")
+		Combat:SetSize(18, 18)
+		Combat:SetTexture(G.media.combat)
+		Combat:SetDesaturated(true)
+		Combat:SetPoint("RIGHT", self.Power, "RIGHT", -5, 0)
+		Combat:SetVertexColor( 1, 1, 0)
+		self.Combat = Combat		
+		self.Combat.PostUpdate = CombatPostUpdate
+		
+		-- PvP
+		if C["UnitframeOptions"]["pvpicon"] then
+			local PvP = self:CreateTexture(nil, 'OVERLAY')
+			PvP:SetSize(35, 35)
+			PvP:SetPoint("CENTER", self, "TOPRIGHT", 5, -5)
+			self.PvP = PvP
+		end
+    end,
+
+    --========================--
+    --  Target
+    --========================--
+    target = function(self, ...)
+        func(self, ...)
+			-- threat bar --	
+		if C["UnitframeOptions"]["showthreatbar"] then
+			local threatbar = T.createStatusbar(UIParent, "ARTWORK", nil, nil, 0.25, 0.25, 0.25, 1)
+			threatbar:SetPoint("TOPLEFT", self.Power, "BOTTOMLEFT", 0, -3)
+			threatbar:SetPoint("BOTTOMRIGHT", self.Power, "BOTTOMRIGHT", 0, -5)
+			threatbar.bd = T.createBackdrop(threatbar, threatbar, 1)
+			threatbar.bg:Hide()
+			self.ThreatBar = threatbar
+		end
+    end,
+
+    --========================--
+    --  Focus
+    --========================--
+    focus = function(self, ...)
+        func(self, ...)
+    end,
+
+    --========================--
+    --  Focus Target
+    --========================--
+    focustarget = function(self, ...)
+        func(self, ...)
+    end,
+
+    --========================--
+    --  Pet
+    --========================--
+    pet = function(self, ...)
+        func(self, ...)
+    end,
+
+    --========================--
+    --  Target Target
+    --========================--
+    targettarget = function(self, ...)
+        func(self, ...)
+    end,
+
+    --========================--
+    --  Boss
+    --========================--
+    boss = function(self, ...)
+        func(self, ...)
+    end,
+	
+	--========================--
+    --  Arena
+    --========================--
+    arena = function(self, ...)
+        func(self, ...)
+		
+        if not self.prepFrame then
+            self.prepFrame = CreateFrame("Frame", self:GetName().."PrepFrame", UIParent)
+            self.prepFrame:SetFrameStrata("BACKGROUND")
+            self.prepFrame:SetAllPoints(self)
+			self.prepFrame.Health = T.createStatusbar(self.prepFrame, "MEDIUM", nil, nil, 1, 1, 1, 1)
+			self.prepFrame.Health.bg:Hide()
+			self.prepFrame.Health:SetAllPoints(self.prepFrame)
+			self.prepFrame.Health.bd = T.createBackdrop(self.prepFrame.Health, self.prepFrame.Health, 0) 
+
+			self.prepFrame.Icon = self.prepFrame:CreateTexture(nil, "OVERLAY")
+			self.prepFrame.Icon:SetPoint("LEFT", self.prepFrame, "RIGHT", 5, 0)	
+			self.prepFrame.Icon:SetSize(C["UnitframeOptions"]["height"], C["UnitframeOptions"]["height"])
+            self.prepFrame.Icon:SetTexCoord(.08, .92, .08, .92)
+			self.prepFrame.Icon.bd = T.createBackdrop(self.prepFrame, self.prepFrame.Icon, 0) 			
+
+            self.prepFrame.SpecClass =  T.createtext(self.prepFrame.Health, "OVERLAY", 13, "OUTLINE", "CENTER")
+            self.prepFrame.SpecClass:SetPoint("CENTER")
+        end
+
+        local specIcon = CreateFrame("Frame", nil, self)
+		specIcon:SetSize(C["UnitframeOptions"]["height"], C["UnitframeOptions"]["height"])
+		specIcon:SetPoint("LEFT", self, "RIGHT", 5, 0)
+		specIcon.bd = T.createBackdrop(specIcon, specIcon, 0)
+        self.PVPSpecIcon = specIcon
+
+		local trinkets = CreateFrame("Frame", nil, self)
+		trinkets:SetSize(C["UnitframeOptions"]["height"], C["UnitframeOptions"]["height"])
+		trinkets:SetPoint("LEFT", specIcon, "RIGHT", 5, 0)
+		trinkets.bd = T.createBackdrop(trinkets, trinkets, 0)
+        trinkets.trinketUseAnnounce = true
+        trinkets.trinketUpAnnounce = true
+        self.Trinket = trinkets
+    end,
+}
+
+local EventFrame = CreateFrame("Frame", nil, UIParent)
+RegisterStateDriver(EventFrame, "visibility", "[petbattle] hide; show")
+
+oUF:RegisterStyle("Mlight", func)
+for unit,layout in next, UnitSpecific do
+    oUF:RegisterStyle("Mlight - " .. unit:gsub("^%l", string.upper), layout)
+end
+
+local spawnHelper = function(self, unit)
+    if(UnitSpecific[unit]) then
+        self:SetActiveStyle("Mlight - " .. unit:gsub("^%l", string.upper))
+    elseif(UnitSpecific[unit:match("[^%d]+")]) then -- boss1 -> boss
+        self:SetActiveStyle("Mlight - " .. unit:match("[^%d]+"):gsub("^%l", string.upper))
+    else
+        self:SetActiveStyle"Mlight"
+    end
+
+    local object = self:Spawn(unit)
+	object:SetParent(EventFrame)
+    return object
+end
+
+EventFrame:RegisterEvent("ADDON_LOADED")
+
+EventFrame:SetScript("OnEvent", function(self, event, ...)
+    self[event](self, ...)
+end)
+
+function EventFrame:ADDON_LOADED(arg1)
+	if arg1 ~= "oUF_Mlight" then return end
+	
+	oUF:Factory(function(self)
+		local playerframe = spawnHelper(self, "player")
+		playerframe.movingname = L["玩家头像"]
+		playerframe.point = {
+			healer = {a1 = "TOPRIGHT", parent = "UIParent", a2 = "BOTTOM", x = -230, y = 350},
+			dpser = {a1 = "CENTER", parent = "UIParent", a2 = "CENTER", x = -400, y = -200},
+		}
+		T.CreateDragFrame(playerframe)
+		
+		local petframe = spawnHelper(self, "pet")
+		petframe.movingname = L["宠物头像"]
+		petframe.point = {
+			healer = {a1 = "RIGHT", parent = playerframe:GetName(), a2 = "LEFT", x = -10, y = 0},
+			dpser = {a1 = "RIGHT", parent = playerframe:GetName(), a2 = "LEFT", x = -10, y = 0},
+		}
+		T.CreateDragFrame(petframe)
+		
+		local targetframe = spawnHelper(self, "target")
+		targetframe.movingname = L["目标头像"]
+		targetframe.point = {
+			healer = {a1 = "TOPLEFT", parent = "UIParent", a2 = "BOTTOM", x = 230, y = 350},
+			dpser = {a1 = "TOP", parent = "UIParent", a2 = "BOTTOM", x = 0, y = 320},
+		}
+		T.CreateDragFrame(targetframe)
+	
+		local totframe = spawnHelper(self, "targettarget")
+		totframe.movingname = L["目标的目标头像"]
+		totframe.point = {
+			healer = {a1 = "LEFT", parent = targetframe:GetName(), a2 = "RIGHT" , x = 10, y = 0},
+			dpser = {a1 = "LEFT", parent = targetframe:GetName(), a2 = "RIGHT" , x = 10, y = 0},
+		}
+		T.CreateDragFrame(totframe)
+	
+		local focusframe = spawnHelper(self, "focus")
+		focusframe.movingname = L["焦点头像"]
+		focusframe.point = {
+			healer = {a1 = "BOTTOM", parent = targetframe:GetName(), a2 = "BOTTOM" , x = 0, y = 180},
+			dpser = {a1 = "TOP", parent = "UIParent", a2 = "BOTTOM" , x = 400, y = 320},
+		}
+		T.CreateDragFrame(focusframe)		
+		
+		local ftframe = spawnHelper(self, "focustarget")
+		ftframe.movingname = L["焦点的目标头像"]
+		ftframe.point = {
+			healer = {a1 = "LEFT", parent = focusframe:GetName(), a2 = "RIGHT" , x = 10, y = 0},
+			dpser = {a1 = "LEFT", parent = focusframe:GetName(), a2 = "RIGHT" , x = 10, y = 0},
+		}
+		T.CreateDragFrame(ftframe)
+	
+		local bossframes = {}
+		if C["UnitframeOptions"]["bossframes"] then
+			for i = 1, MAX_BOSS_FRAMES do
+				bossframes["boss"..i] = spawnHelper(self,"boss" .. i)
+			end
+			for i = 1, MAX_BOSS_FRAMES do
+				bossframes["boss"..i].movingname = L["首领头像"..i]
+				if i == 1 then
+					bossframes["boss"..i].point = {
+						healer = {a1 = "TOPRIGHT", parent = "UIParent", a2 = "TOPRIGHT" , x =  -60, y = -300},
+						dpser = {a1 = "TOPRIGHT", parent = "UIParent", a2 = "TOPRIGHT" , x =  -60, y = -300},
+					}
+				else
+					bossframes["boss"..i].point = {
+						healer = {a1 = "TOP", parent = bossframes["boss"..(i-1)]:GetName(), a2 = "BOTTOM" , x = 0, y = -80},
+						dpser = {a1 = "TOP", parent = bossframes["boss"..(i-1)]:GetName(), a2 = "BOTTOM" , x = 0, y = -80},
+					}
+				end			
+			end
+			for i = 1, MAX_BOSS_FRAMES do
+				T.CreateDragFrame(bossframes["boss"..i])
+			end
+		end
+		
+		local arenaframes = {}
+		if C["UnitframeOptions"]["arenaframs"] then
+			for i = 1, 5 do
+				arenaframes["arena"..i] = spawnHelper(self,"arena"..i)
+			end
+			for i = 1, 5 do
+				arenaframes["arena"..i].movingname = L["竞技场敌人头像"..i]
+				if i == 1 then
+					arenaframes["arena"..i].point = {
+						healer = {a1 = "TOPRIGHT", parent = "UIParent", a2 = "TOPRIGHT" , x = -140, y = -340},
+						dpser = {a1 = "TOPRIGHT", parent = "UIParent", a2 = "TOPRIGHT" , x = -140, y = -340},
+					}
+				else
+					arenaframes["arena"..i].point = {
+						healer = {a1 = "TOP", parent = arenaframes["arena"..(i-1)]:GetName(), a2 = "BOTTOM" , x = 0, y = -80},
+						dpser = {a1 = "TOP", parent = arenaframes["arena"..(i-1)]:GetName(), a2 = "BOTTOM" , x = 0, y = -80},
+					}
+				end
+				T.CreateDragFrame(arenaframes["arena"..i])				
+			end
+		end
+	end)
+	
+	EventFrame:RegisterEvent("ARENA_PREP_OPPONENT_SPECIALIZATIONS")
+	EventFrame:RegisterEvent("ARENA_OPPONENT_UPDATE")
+	EventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+end
+
+function EventFrame:ARENA_OPPONENT_UPDATE()
+	for i=1, 5 do
+        if not _G["oUF_MlightArena"..i] then return end
+        _G["oUF_MlightArena"..i].prepFrame:Hide()
+    end
+end
+
+function EventFrame:ARENA_PREP_OPPONENT_SPECIALIZATIONS()
+	UpdatePrep()
+end
+
+function EventFrame:PLAYER_ENTERING_WORLD()
+	UpdatePrep()
+end
+
+PetCastingBarFrame:Hide()
+PetCastingBarFrame:UnregisterAllEvents()
