@@ -321,6 +321,13 @@ local default_ClassClick = {
 							},
 		},
 	},
+	DEMONHUNTER = {
+		["1"] = {
+			["Click"]			= {
+				["action"]	= "target",
+							},
+		},
+	},
 }
 
 local classClickdb = default_ClassClick[select(2, UnitClass("player"))]
