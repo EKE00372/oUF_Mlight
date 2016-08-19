@@ -627,6 +627,7 @@ C["CooldownAura"] = AuraList
 C["UnitframeOptions"] = {
 
 		style = 1, -- 1: tansparent , 2:dark bg reverse, 3:dark bg normal -- 加入
+		raidstyle = 2,
 		enablefade = true, -- 渐隐
 		fadingalpha = 0, -- 最小透明度
 		valuefontsize = 16, -- 数值字号
@@ -694,18 +695,20 @@ C["UnitframeOptions"] = {
 		-- show pvp timer
 		pvpicon = false,
 		
-		-- show value 各职业状态条能量
+		-- show value 各职业状态条能量(副資源)
 		demonicfuryvalue = true,
 		eclipsevalue = true,
 		runecooldown = true,
 		totemcooldown = true,
+		dpsmana = true,
+		stagger = true,
 		valuefs = 12,
 		
 		--[[ share ]]-- 团队
-		enableraid = false,
+		enableraid = true,
 		showraidpet = false, -- 显示宠物
 		raidfontsize = 14, -- 字号
-		namelength = 4, -- 名字字数
+		namelength = 8, -- 名字字数
 		showsolo = true, -- 无队伍时显示
 		autoswitch = true, -- 关闭根据专精自动切换布局
 		raidonly = "healer", -- healer/dpser 关闭自动切换时只显示这种样式的团队框架
@@ -716,11 +719,11 @@ C["UnitframeOptions"] = {
 		--[[ healer mode ]]--
 		healergroupfilter = '1,2,3,4,5,6', -- 显示的队伍
 		healerraidheight = 45, -- 高
-		healerraidwidth = 80, -- 宽
+		healerraidwidth = 90, -- 宽
 		raidmanabars = true, -- 显示法力条
 		raidhpheight = 0.85, -- 生命条高度/框体高度
 		anchor = "TOP", -- 延伸方向
-		partyanchor = "RIGHT", -- 小队延伸方向
+		partyanchor = "LEFT", -- 小队延伸方向
 		showgcd = true, -- 显示GCD
 		showmisshp = false, -- 显示缺失生命值
 		healprediction = false, -- 生命值预估
@@ -729,7 +732,7 @@ C["UnitframeOptions"] = {
 		--[[ dps/tank mode ]]--
 		dpsgroupfilter = '1,2,3,4,5,6', -- 显示的队伍
 		dpsraidheight = 45, -- 高
-		dpsraidwidth = 80, -- 宽
+		dpsraidwidth = 90, -- 宽
 		unitnumperline = 5, -- 每一行的框体数量
 		dpsraidgroupbyclass = false, -- 按照职业排序
 		dpstank_assisticon = true, -- 显示主坦克和主助理图标

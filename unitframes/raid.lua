@@ -46,7 +46,7 @@ local function healpreditionbar(self, ...)
 	hpb:SetStatusBarColor(...)
 	hpb:SetPoint('TOP')
 	hpb:SetPoint('BOTTOM')
-	if C["UnitframeOptions"]["style"] ~= 3 then
+	if C["UnitframeOptions"]["raidstyle"] ~= 3 then
 		hpb:SetPoint('LEFT', self.Health:GetStatusBarTexture(), 'LEFT')
 	else
 		hpb:SetPoint('LEFT', self.Health:GetStatusBarTexture(), 'RIGHT')
@@ -196,7 +196,7 @@ local func = function(self, unit)
 	self.bg:SetAllPoints(self)
 	self.bg.tex = self.bg:CreateTexture(nil, "BACKGROUND")
     self.bg.tex:SetAllPoints()
-	if C["UnitframeOptions"]["style"] == 1 then
+	if C["UnitframeOptions"]["raidstyle"] == 1 then
 		self.bg.tex:SetTexture(G.media.blank)
 		self.bg.tex:SetVertexColor(0, 0, 0, 0.65)	
 	else
@@ -211,7 +211,7 @@ local func = function(self, unit)
 	hp:SetPoint("TOPRIGHT", self, "TOPRIGHT")
     hp.frequentUpdates = true
 	
-	if C["UnitframeOptions"]["style"] == 1 then
+	if C["UnitframeOptions"]["raidstyle"] == 1 then
 		hp.bg:SetGradientAlpha("VERTICAL", .5, .5, .5, .5, 0, 0, 0,0)
 	else
 		hp.bg:SetGradientAlpha("VERTICAL", .2,.2,.2,.15,.25,.25,.25,.6)
@@ -222,13 +222,13 @@ local func = function(self, unit)
     hp.ind:SetTexture("Interface\\Buttons\\WHITE8x8")
 	hp.ind:SetVertexColor(0, 0, 0)
 	hp.ind:SetSize(1, hp:GetHeight())
-	if C["UnitframeOptions"]["style"] ~= 3 then
+	if C["UnitframeOptions"]["raidstyle"] ~= 3 then
 		hp.ind:SetPoint("RIGHT", hp:GetStatusBarTexture(), "LEFT", 0, 0)
 	else
 		hp.ind:SetPoint("LEFT", hp:GetStatusBarTexture(), "RIGHT", 0, 0)
 	end
 	
-	if C["UnitframeOptions"]["style"] ~= 3 then
+	if C["UnitframeOptions"]["raidstyle"] ~= 3 then
 		hp:SetReverseFill(true)
 	end
 	
@@ -337,7 +337,7 @@ local func = function(self, unit)
 	Auras.tfontsize = 10
 	Auras.cfontsize = 10
 	
-	Auras.sizeA = 20
+	Auras.sizeA = 26
 	Auras.point1A = "CENTER"
 	Auras.point2A = "CENTER"
 	Auras.xA = 0
@@ -410,7 +410,7 @@ local dfunc = function(self, unit)
 	self.bg:SetAllPoints(self)
 	self.bg.tex = self.bg:CreateTexture(nil, "BACKGROUND")
     self.bg.tex:SetAllPoints()
-	if C["UnitframeOptions"]["style"] == 1 then
+	if C["UnitframeOptions"]["raidstyle"] == 1 then
 		self.bg.tex:SetTexture(G.media.blank)
 		self.bg.tex:SetVertexColor(0, 0, 0, 0)	
 	else
@@ -426,7 +426,7 @@ local dfunc = function(self, unit)
     hp:SetAllPoints(self)
     hp.frequentUpdates = true
 	
-	if C["UnitframeOptions"]["style"] == 1 then
+	if C["UnitframeOptions"]["raidstyle"] == 1 then
 		hp.bg:SetGradientAlpha("VERTICAL", .5, .5, .5, .5, 0, 0, 0,0)
 	else
 		hp.bg:SetGradientAlpha("VERTICAL", .2,.2,.2,.15,.25,.25,.25,.6)
@@ -437,13 +437,13 @@ local dfunc = function(self, unit)
     hp.ind:SetTexture("Interface\\Buttons\\WHITE8x8")
 	hp.ind:SetVertexColor(0, 0, 0)
 	hp.ind:SetSize(1, self:GetHeight())
-	if C["UnitframeOptions"]["style"] ~= 3 then
+	if C["UnitframeOptions"]["raidstyle"] ~= 3 then
 		hp.ind:SetPoint("RIGHT", hp:GetStatusBarTexture(), "LEFT", 0, 0)
 	else
 		hp.ind:SetPoint("LEFT", hp:GetStatusBarTexture(), "RIGHT", 0, 0)
 	end
 	
-	if C["UnitframeOptions"]["style"] ~= 3 then
+	if C["UnitframeOptions"]["raidstyle"] ~= 3 then
 		hp:SetReverseFill(true)
 	end
 	
@@ -548,7 +548,7 @@ local function Spawnhealraid()
 		'showSolo', C["UnitframeOptions"]["showsolo"],
 		'showParty', true,
 		'showRaid', true,
-		'xOffset', 5,
+		'xOffset', -5,
 		'yOffset', -5,
 		'point', C["UnitframeOptions"]["anchor"],
 		'groupFilter', C["UnitframeOptions"]["healergroupfilter"],
@@ -561,8 +561,13 @@ local function Spawnhealraid()
 	)
 	healerraid.movingname = L["治疗模式团队框架"]
 	healerraid.point = {
-		healer = {a1 = "CENTER", parent = "UIParent", a2 = "BOTTOMRIGHT", x = -250, y = 150},
-		dpser = {a1 = "CENTER", parent = "UIParent", a2 = "BOTTOMRIGHT", x = -250, y = 150},
+		--if size = 40 then
+		--healer = {a1 = "CENTER", parent = "UIParent", a2 = "BOTTOMRIGHT", x = -390, y = 150},
+		--dpser = {a1 = "CENTER", parent = "UIParent", a2 = "BOTTOMRIGHT", x = -390, y = 150},
+		--else
+		healer = {a1 = "CENTER", parent = "UIParent", a2 = "BOTTOMRIGHT", x = -300, y = 150},
+		dpser = {a1 = "CENTER", parent = "UIParent", a2 = "BOTTOMRIGHT", x = -300, y = 150},	
+		--end		
 	}
 	T.CreateDragFrame(healerraid)
 	healerraid.df:ClearAllPoints()
