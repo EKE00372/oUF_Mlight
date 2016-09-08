@@ -752,8 +752,14 @@ end
 
 function EventFrame:PLAYER_ENTERING_WORLD()
 	if C["UnitframeOptions"] == nil or not C["UnitframeOptions"]["enableraid"] then return end
+	if not Blizzard_CompactRaidFrames then LoadAddOn("Blizzard_CompactRaidFrames") end
+
+	CompactRaidFrameManager:UnregisterAllEvents()
 	CompactRaidFrameManager:Hide()
+	--CompactRaidFrameManager:SetAlpha(0)
+	CompactRaidFrameContainer:UnregisterAllEvents()
 	CompactRaidFrameContainer:Hide()
+	--CompactRaidFrameContainer:SetAlpha(0)
 	CompactRaidFrameManager.Show = CompactRaidFrameManager.Hide
 	CompactRaidFrameContainer.Show = CompactRaidFrameContainer.Hide
 
